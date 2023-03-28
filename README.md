@@ -8,7 +8,7 @@ This is a independent study aimed at optimizing a functionally-graded gyroid bas
 ## Next Steps
 
 Part 1: Compression Simulation (Mar 28 - Mar 31)
- - Demonstrate mesh convergence (charge `hmax`)
+ - Demonstrate mesh convergence (change `hmax`)
  - Limit strain to 1% in any direction (XX, XY, YY, YZ, ZZ, XZ)
  - Troubleshoot sparsness of K-matrix
 
