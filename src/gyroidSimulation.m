@@ -5,50 +5,41 @@ tic
 
 %% Create Gyroid
 
-resolution = 50;
-volumeFraction = 0.2;
+resolution = 20;
+isoValue = 0.4;
 numCell = 1;
 plateThickness = 0.02;
 spacing = 0;
+
+Hmax = 0.05;
 
 runFEA = true;
 saveSTL = false;
 
 disp("Creating Gyroid")
 
-gyroid = Gyroid(resolution,volumeFraction,numCell,0);
-topPlate = Plate(plateThickness, 1, spacing);
-bottomPlate = Plate(plateThickness, -plateThickness, spacing);
+gyroid = Gyroid(resolution,isoValue,numCell,0);
 
 fig = figure(1);
 clf(fig);
 p1 = patch('Faces', gyroid.Faces, 'Vertices', gyroid.Vertices);
-p2 = patch('Faces', topPlate.Faces, 'Vertices', topPlate.Vertices);
-p3 = patch('Faces', bottomPlate.Faces, 'Vertices', bottomPlate.Vertices);
 set(p1,'FaceColor','red','EdgeColor','none');
-set(p2,'FaceColor','blue','EdgeColor','none','FaceAlpha',0.5);
-set(p3,'FaceColor','blue','EdgeColor','none','FaceAlpha',0.5);
 daspect([1 1 1])
 view([37.5	30]);
 camlight 
 lighting flat
 
-[plateFaces, plateVertices] = combineFV(topPlate.Faces,topPlate.Vertices, bottomPlate.Faces, bottomPlate.Vertices);
-[finalFaces, finalVertices] = combineFV(plateFaces, plateVertices, gyroid.Faces, gyroid.Vertices);
+finalFaces = gyroid.Faces;
+finalVertices = gyroid.Vertices;
 
-nearBottom = bottomPlate.bottom;
-nearTop = topPlate.top;
+nearBottom = gyroid.bottom;
+nearTop = [gyroid.top];
 
 %% Running simulation
 
 % start model
 model = createpde("structural","static-solid");
 geometryFromMesh(model, finalVertices.', finalFaces.');
-
-% display model
-fig2 = figure(2);
-clf(fig2);
-pdegplot(model,"CellLabels","on")
 
 disp("Applying Structural Properties and Boundary Conditions")
 
@@ -57,16 +48,19 @@ disp("Applying Structural Properties and Boundary Conditions")
 % Source: https://asm.matweb.com/search/SpecificMaterial.asp?bassnum=mtp641
 structuralProperties(model,"YoungsModulus",113.8+09,"PoissonsRatio",0.342);
 
-% Plate structural properties
-structuralProperties(model,"YoungsModulus",250+09,"PoissonsRatio",0.342,'Cell',[1, 2]);
-
 % apply boundary conditions and loads
 bottomFaces = unique(nearestFace(model.Geometry,nearBottom));
 structuralBC(model,"Face",bottomFaces,"Constraint","fixed");
 
 topFaces = unique(nearestFace(model.Geometry,nearTop));
+
 % structuralBoundaryLoad(model,"Face",topFaces,"SurfaceTraction",[0 0 -10]);
-structuralBC(model,"Face",topFaces, "Displacement",[0;0;-0.001]); 
+structuralBC(model,"Face",topFaces, "Displacement",[0;0;-0.0001]); 
+
+% display model
+fig2 = figure(2);
+clf(fig2);
+pdegplot(model,"FaceLabels","on")
 
 if ~runFEA
     return
@@ -75,7 +69,7 @@ end
 disp("Generating Mesh")
 
 % generate FEA mesh
-generateMesh(model, Hmax=0.02);
+generateMesh(model, Hmax=Hmax);
 fig2 = figure(2);
 clf(fig2);
 pdeplot3D(model)
@@ -112,11 +106,16 @@ colormap("jet")
 fig5 = figure(5);
 clf(fig5);
 
-% strain zz
-pdeplot3D(model,"ColorMapData",result.Strain.ezz,"Deformation",result.Displacement, ...
-                 "DeformationScaleFactor",100)
-title("Strain ZZ")
-colormap("jet")
+% % strain zz
+% pdeplot3D(model,"ColorMapData",result.Strain.ezz,"Deformation",result.Displacement, ...
+%                  "DeformationScaleFactor",100)
+% title("Strain ZZ")
+% colormap("jet")
+
+% Sparseness Matrix
+disp("Assemble FE Matrices")
+matrices = assembleFEMatrices(model, "K");
+spy(matrices.K)
 
 %% Create STL
 

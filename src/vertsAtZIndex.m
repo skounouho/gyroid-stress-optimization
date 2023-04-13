@@ -1,4 +1,4 @@
-function levelPoints = vertsAtZIndex(X,Y,Z,F,ZIndex,x_max,y_max)
+function levelPoints = vertsAtZIndex(X,Y,Z,F,ZIndex,x_max,y_max, incr)
 %vertsAtZIndex Returns vertices at a certain Z index
 %   Detailed explanation goes here
     levelX = X(:,:,ZIndex);
@@ -6,8 +6,9 @@ function levelPoints = vertsAtZIndex(X,Y,Z,F,ZIndex,x_max,y_max)
     levelZ = Z(:,:,ZIndex);
     idx = F(:,:,ZIndex) >= 0;
     levelPoints = [levelX(idx) levelY(idx) levelZ(idx)];
-    levelPoints = levelPoints(levelPoints(:,1)>0,:);
+    levelPoints = levelPoints(levelPoints(:,1)>=0,:);
     levelPoints = levelPoints(levelPoints(:,1)<x_max,:);
-    levelPoints = levelPoints(levelPoints(:,2)>0,:);
+    levelPoints = levelPoints(levelPoints(:,2)>=0,:);
     levelPoints = levelPoints(levelPoints(:,2)<y_max,:);
+    levelPoints = levelPoints + [incr/1000 incr/1000 0];
 end

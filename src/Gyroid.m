@@ -7,14 +7,13 @@ classdef Gyroid
         name
     end
     methods
-        function obj = Gyroid(resolution, volumeFraction, numCell, plateWidth)
+        function obj = Gyroid(resolution, isoValue, numCell, plateWidth)
             %GYROID Generates a gyroid of an approximate volume fraction with
             % plates above and below it.
             
             % Input
             
             n=resolution;                  % Increment number final mesh (reduce in case of several unit cells)
-            d=volumeFraction;        % Target volume fraction
             
             % Generation of the final TPMS lattice in .STL file format
             
@@ -32,14 +31,14 @@ classdef Gyroid
             
             % Create the unit cells
 
-            isoval=13.39.*d.^6-26.83*d.^5+22.40.*d.^4-10.16.*d.^3+2.63.*d.^2+1.16.*d+0.03; % see knowledge doc for source
+            % isoval=13.39.*d.^6-26.83*d.^5+22.40.*d.^4-10.16.*d.^3+2.63.*d.^2+1.16.*d+0.03; % see knowledge doc for source
             
             F=cos(2.*pi.*x).*sin(2.*pi.*y)+cos(2.*pi.*y).*sin(2.*pi.*z)+cos(2.*pi.*z).*sin(2.*pi.*x);
-            F=-(F+isoval).*(F-isoval);
+            F=-(F+isoValue).*(F-isoValue);
 
             % cut off weird edges
-            F(x + y + z < isoval) = -1;
-            F(x + y + z > x_max + y_max + z_max - isoval) = -1;
+            F(x + y + z < t*3) = -1;
+            F(x + y + z > x_max + y_max + z_max - t*3) = -1;
             
             % Create plates
             
@@ -66,14 +65,14 @@ classdef Gyroid
             
             % find bottom vertices
 
-            obj.bottom = vertsAtZIndex(x,y,z,F,1,x_max,y_max);
+            obj.bottom = vertsAtZIndex(x,y,z,F,1,x_max,y_max,t);
 
             % find top vertices
 
-            obj.top = vertsAtZIndex(x,y,z,F,size(F,3),x_max,y_max);
+            obj.top = vertsAtZIndex(x,y,z,F,size(F,3),x_max,y_max,t);
 
             formatSpec = "N%dVF%0.2f%C%dPW%0.2f";
-            obj.name = sprintf(formatSpec,resolution,volumeFraction,numCell,plateWidth) + "DT" + string(datetime,'yyMMddHHmmss');
+            obj.name = sprintf(formatSpec,resolution,isoValue,numCell,plateWidth) + "DT" + string(datetime,'yyMMddHHmmss');
         end
 
         function show(obj, figureNo)
