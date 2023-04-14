@@ -96,6 +96,8 @@ bNodes = findNodes(mesh,"region","Face",bottomFaces);
 tNodes = findNodes(mesh,"region","Face",topFaces);
 
 fig = figure(1);
+fig.WindowStyle = 'docked';
+fig.WindowState = 'maximized';
 clf(fig)
 pdeplot3D(model)
 hold on
@@ -104,23 +106,29 @@ plot3(mesh.Nodes(1,tNodes),mesh.Nodes(2,tNodes),mesh.Nodes(3,tNodes),".","Color"
 title("Mesh with Constraint Nodes");
 
 fig = figure(2);
+fig.WindowStyle = 'docked';
+fig.WindowState = 'maximized';
 clf(fig)
 matrices = assembleFEMatrices(model, "K");
 spy(matrices.K)
 
-f = fit(HmaxValues', vonmises', 'exp1');
-
 fig = figure(3);
+fig.WindowStyle = 'docked';
+fig.WindowState = 'maximized';
 clf(fig)
 scatter(HmaxValues,vonmises)
 title("Hmax vs. Von Mises Stress");
 
 fig = figure(4);
+fig.WindowStyle = 'docked';
+fig.WindowState = 'maximized';
 clf(fig)
 scatter(1:iterations,HmaxValues)
 title("Iteration vs. Hmax");
 
 fig = figure(5);
+fig.WindowStyle = 'docked';
+fig.WindowState = 'maximized';
 clf(fig)
 scatter(HmaxValues,t)
 title("Hmax vs. time");
