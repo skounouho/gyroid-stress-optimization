@@ -1,7 +1,6 @@
 clc
 clear
 % close all
-tic
 
 %% Create Gyroid
 
@@ -20,22 +19,13 @@ disp("Creating Gyroid")
 
 gyroid = Gyroid(resolution,isoValue,numCell,0);
 
-fig = figure(1);
-clf(fig);
-p1 = patch('Faces', gyroid.Faces, 'Vertices', gyroid.Vertices);
-set(p1,'FaceColor','red','EdgeColor','none');
-daspect([1 1 1])
-view([37.5	30]);
-camlight 
-lighting flat
-
 finalFaces = gyroid.Faces;
 finalVertices = gyroid.Vertices;
 
 nearBottom = gyroid.bottom;
-nearTop = [gyroid.top];
+nearTop = gyroid.top;
 
-%% Running simulation
+%% Setting up simulation
 
 % start model
 model = createpde("structural","static-solid");
@@ -52,80 +42,96 @@ structuralProperties(model,"YoungsModulus",113.8+09,"PoissonsRatio",0.342);
 bottomFaces = unique(nearestFace(model.Geometry,nearBottom));
 structuralBC(model,"Face",bottomFaces,"Constraint","fixed");
 
-topFaces = unique(nearestFace(model.Geometry,nearTop));
-
 % structuralBoundaryLoad(model,"Face",topFaces,"SurfaceTraction",[0 0 -10]);
-structuralBC(model,"Face",topFaces, "Displacement",[0;0;-0.0001]); 
+topFaces = unique(nearestFace(model.Geometry,nearTop));
+structuralBC(model,"Face",topFaces, "Displacement",[0;0;-0.00001]); 
 
-% display model
-fig2 = figure(2);
-clf(fig2);
-pdegplot(model,"FaceLabels","on")
+%% Run FEA
 
-if ~runFEA
-    return
+disp("Generate Mesh and Solve FEA")
+
+iterations = 30;
+
+t = zeros(1,iterations);
+
+HmaxValues = zeros(1,iterations);
+vonmises = zeros(1,iterations);
+displacements = zeros(1,iterations);
+strains = zeros(1,iterations);
+volumeFractions = zeros(1,iterations);
+
+for i = 1:iterations
+    
+    Hmax = 0.5*exp((1-i) / 10);
+    HmaxValues(i) = Hmax;
+
+    tic;
+    
+    mesh = generateMesh(model, Hmax=Hmax);
+    result = solve(model);
+    
+    t(i) = toc;
+    vonmises(i) = max(result.VonMisesStress);
+    displacements(i) = max(result.Displacement.Magnitude);
+    strains(i) = max(result.Strain.ezz);
+    volumeFractions(i) = volume(mesh);
+    
+    
+    printStr = sprintf("i: %d \t Hmax %0.3f \t Max Von Mises: %0.3e \t Maximum Displacement: %0.3e \t Max Strain ZZ: %0.3e \t", ...
+        i, ...
+        Hmax, ...
+        vonmises(i), ...
+        displacements(i), ...
+        strains(i)) + sprintf("Volume Fraction: %0.2f \t Time: %0.2f s", volumeFractions(i), t(i));
+
+    disp(printStr)
+
 end
 
-disp("Generating Mesh")
+disp("Simulations FINISHED")
 
-% generate FEA mesh
-generateMesh(model, Hmax=Hmax);
-fig2 = figure(2);
-clf(fig2);
+%% Plot Geometry and Records
+
+bNodes = findNodes(mesh,"region","Face",bottomFaces);
+tNodes = findNodes(mesh,"region","Face",topFaces);
+
+fig = figure(1);
+clf(fig)
 pdeplot3D(model)
-title("Mesh with Quadratic Tetrahedral Elements");
+hold on
+plot3(mesh.Nodes(1,bNodes),mesh.Nodes(2,bNodes),mesh.Nodes(3,bNodes),".","Color","b") % bottom nodes
+plot3(mesh.Nodes(1,tNodes),mesh.Nodes(2,tNodes),mesh.Nodes(3,tNodes),".","Color","r") % top nodes
+title("Mesh with Constraint Nodes");
 
-
-disp("Solving FEA")
-
-% solve
-result = solve(model);
-
-%% Plot Results
-
-disp("Plotting Results")
-
-fig3 = figure(3);
-clf(fig3);
-
-% stress
-pdeplot3D(model,"ColorMapData",result.VonMisesStress, "Deformation",result.Displacement, ...
-                 "DeformationScaleFactor",100)
-title("von Mises stress")
-colormap("jet")
-
-fig4 = figure(4);
-clf(fig4);
-
-% displacement
-pdeplot3D(model,"ColorMapData",result.Displacement.Magnitude,"Deformation",result.Displacement, ...
-                 "DeformationScaleFactor",100)
-title("Magnitude Displacement")
-colormap("jet")
-
-fig5 = figure(5);
-clf(fig5);
-
-% % strain zz
-% pdeplot3D(model,"ColorMapData",result.Strain.ezz,"Deformation",result.Displacement, ...
-%                  "DeformationScaleFactor",100)
-% title("Strain ZZ")
-% colormap("jet")
-
-% Sparseness Matrix
-disp("Assemble FE Matrices")
+fig = figure(2);
+clf(fig)
 matrices = assembleFEMatrices(model, "K");
 spy(matrices.K)
 
-%% Create STL
+f = fit(HmaxValues', vonmises', 'exp1');
 
-if saveSTL
-    selpath = uigetdir;
-    filename = string(selpath) + "/" + gyroid.name + ".stl";
-    stlwrite(filename,gyroid.Faces,gyroid.Vertices);
-end
+fig = figure(3);
+clf(fig)
+scatter(HmaxValues,vonmises)
+title("Hmax vs. Von Mises Stress");
 
-toc
+fig = figure(4);
+clf(fig)
+scatter(1:iterations,HmaxValues)
+title("Iteration vs. Hmax");
+
+fig = figure(5);
+clf(fig)
+scatter(HmaxValues,t)
+title("Hmax vs. time");
+
+% %% Create STL
+% 
+% if saveSTL
+%     selpath = uigetdir;
+%     filename = string(selpath) + "/" + gyroid.name + ".stl";
+%     stlwrite(filename,gyroid.Faces,gyroid.Vertices);
+% end
 
 
 
