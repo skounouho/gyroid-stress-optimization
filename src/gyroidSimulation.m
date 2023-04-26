@@ -5,22 +5,30 @@ clear
 %% Create Gyroid
 
 resolution = 20;
-isoValue = 0.4;
 numCell = 1;
-plateThickness = 0.02;
+weight = eye(21)*0.1;
+
 spacing = 0;
 
 Hmax = 0.05;
 
-runFEA = true;
 saveSTL = false;
 
 disp("Creating Gyroid")
 
-gyroid = Gyroid(resolution,isoValue,numCell,0);
+gyroid = Gyroid(resolution,0.4,numCell);
 
 finalFaces = gyroid.Faces;
 finalVertices = gyroid.Vertices;
+
+fig = figure(1);
+clf(fig);
+p1 = patch('Faces', gyroid.Faces, 'Vertices', gyroid.Vertices);
+set(p1,'FaceColor','red','EdgeColor','none');
+daspect([1 1 1])
+view([37.5	30]);
+camlight 
+lighting flat
 
 nearBottom = gyroid.bottom;
 nearTop = gyroid.top;
@@ -50,7 +58,8 @@ structuralBC(model,"Face",topFaces, "Displacement",[0;0;-0.00001]);
 
 disp("Generate Mesh and Solve FEA")
 
-iterations = 30;
+Hmax_start = 0.5;
+iterations = 8;
 
 t = zeros(1,iterations);
 
@@ -62,7 +71,7 @@ volumeFractions = zeros(1,iterations);
 
 for i = 1:iterations
     
-    Hmax = 0.5*exp((1-i) / 10);
+    Hmax = Hmax_start*2^(1-i);
     HmaxValues(i) = Hmax;
 
     tic;
@@ -97,7 +106,6 @@ tNodes = findNodes(mesh,"region","Face",topFaces);
 
 fig = figure(1);
 fig.WindowStyle = 'docked';
-fig.WindowState = 'maximized';
 clf(fig)
 pdeplot3D(model)
 hold on
@@ -107,28 +115,24 @@ title("Mesh with Constraint Nodes");
 
 fig = figure(2);
 fig.WindowStyle = 'docked';
-fig.WindowState = 'maximized';
 clf(fig)
 matrices = assembleFEMatrices(model, "K");
 spy(matrices.K)
 
 fig = figure(3);
 fig.WindowStyle = 'docked';
-fig.WindowState = 'maximized';
 clf(fig)
-scatter(HmaxValues,vonmises)
-title("Hmax vs. Von Mises Stress");
+scatter(HmaxValues,displacements)
+title("Hmax vs. Displacement");
 
 fig = figure(4);
 fig.WindowStyle = 'docked';
-fig.WindowState = 'maximized';
 clf(fig)
 scatter(1:iterations,HmaxValues)
 title("Iteration vs. Hmax");
 
 fig = figure(5);
 fig.WindowStyle = 'docked';
-fig.WindowState = 'maximized';
 clf(fig)
 scatter(HmaxValues,t)
 title("Hmax vs. time");

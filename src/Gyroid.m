@@ -7,9 +7,8 @@ classdef Gyroid
         name
     end
     methods
-        function obj = Gyroid(resolution, isoValue, numCell, plateWidth)
-            %GYROID Generates a gyroid of an approximate volume fraction with
-            % plates above and below it.
+        function obj = Gyroid(resolution, isoValue, numCell)
+            %GYROID Generates a gyroid for a given isovalue
             
             % Input
             
@@ -25,9 +24,11 @@ classdef Gyroid
             
             xi = 0:t:x_max;
             yi = 0:t:y_max;
-            zi = 0 - plateWidth:t:z_max + plateWidth;
+            zi = 0:t:z_max;
             
             [x,y,z] = meshgrid(xi,yi,zi);
+            
+%             F = density(x,y,z,weights);
             
             % Create the unit cells
 
@@ -39,14 +40,6 @@ classdef Gyroid
             % cut off weird edges
             F(x + y + z < t*3) = -1;
             F(x + y + z > x_max + y_max + z_max - t*3) = -1;
-            
-            % Create plates
-            
-            zPlateI  = z > z_max;
-            F(zPlateI) = z_max - abs(x(zPlateI)+y(zPlateI) - x_max)+abs(x(zPlateI)-y(zPlateI)  - y_max);
-
-            zPlateI  = z < 0;
-            F(zPlateI) = abs(x(zPlateI)+y(zPlateI) - x_max)+abs(x(zPlateI)-y(zPlateI)  - y_max);
             
             % Combine isocaps and isosurface
             
@@ -72,7 +65,7 @@ classdef Gyroid
             obj.top = vertsAtZIndex(x,y,z,F,size(F,3),x_max,y_max,t);
 
             formatSpec = "N%dVF%0.2f%C%dPW%0.2f";
-            obj.name = sprintf(formatSpec,resolution,isoValue,numCell,plateWidth) + "DT" + string(datetime,'yyMMddHHmmss');
+            obj.name = sprintf(formatSpec,resolution,isoValue,numCell) + "DT" + string(datetime,'yyMMddHHmmss');
         end
 
         function show(obj, figureNo)
