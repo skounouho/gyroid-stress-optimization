@@ -4,10 +4,11 @@ classdef Gyroid
         Vertices {mustBeReal}
         bottom {mustBeReal}
         top {mustBeReal}
+        grid
         name
     end
     methods
-        function obj = Gyroid(resolution, isoValue, numCell)
+        function obj = Gyroid(resolution, isoValue, numCell, weights, filter)
             %GYROID Generates a gyroid for a given isovalue
             
             % Input
@@ -27,24 +28,23 @@ classdef Gyroid
             zi = 0:t:z_max;
             
             [x,y,z] = meshgrid(xi,yi,zi);
+
+            obj.grid = struct("X", x, "Y", y, "Z", z);
             
-%             F = density(x,y,z,weights);
+            F = density(x,y,z,weights,filter);
             
             % Create the unit cells
 
             % isoval=13.39.*d.^6-26.83*d.^5+22.40.*d.^4-10.16.*d.^3+2.63.*d.^2+1.16.*d+0.03; % see knowledge doc for source
             
-            F=cos(2.*pi.*x).*sin(2.*pi.*y)+cos(2.*pi.*y).*sin(2.*pi.*z)+cos(2.*pi.*z).*sin(2.*pi.*x);
-            F=-(F+isoValue).*(F-isoValue);
-
             % cut off weird edges
             F(x + y + z < t*3) = -1;
             F(x + y + z > x_max + y_max + z_max - t*3) = -1;
             
             % Combine isocaps and isosurface
             
-            [fn,vn]=isosurface(x,y,z,F,0);
-            [fc,vc,~] = isocaps(x,y,z,F,0);       
+            [fn,vn]=isosurface(x,y,z,F,0.1);
+            [fc,vc,~] = isocaps(x,y,z,F,0.1);       
             [fn, vn] = combineFV(fn, vn, fc, vc);
             
             
@@ -66,6 +66,13 @@ classdef Gyroid
 
             formatSpec = "N%dVF%0.2f%C%dPW%0.2f";
             obj.name = sprintf(formatSpec,resolution,isoValue,numCell) + "DT" + string(datetime,'yyMMddHHmmss');
+        end
+
+        function delta = optimize(obj, result,weights,filter)
+            idx = findNodes(result.Mesh,"nearest",[obj.grid.X(:) obj.grid.Y(:) obj.grid.Z(:)]');
+            stress = result.VonMisesStress(idx);
+        
+            delta = (stress .* stress) .* densityDerivative(obj.grid.X,obj.grid.Y,obj.grid.Z,weights,filter);
         end
 
         function show(obj, figureNo)
